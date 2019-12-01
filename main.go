@@ -2,14 +2,14 @@ package main
 
 import (
 	"archive/zip"
-	"fmt"
-	"github.com/minio/minio-go"
-	"github.com/robfig/cron"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/minio/minio-go"
+	"github.com/robfig/cron"
 )
 
 // RecursiveZip is function to create zip for given directory
@@ -70,7 +70,6 @@ func Upload() {
 
 func main() {
 	c := cron.New()
-	Upload()
-	c.AddFunc(os.Getenv("CRON_SCHEDULE"), func() { fmt.Println("Every minute cron") })
+	c.AddFunc(os.Getenv("CRON_SCHEDULE"), Upload)
 	c.Start()
 }
