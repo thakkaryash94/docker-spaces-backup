@@ -2,11 +2,14 @@ package main
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/minio/minio-go"
 	"github.com/robfig/cron"
@@ -58,18 +61,43 @@ func Upload() {
 		log.Fatalln(err)
 	}
 
-	RecursiveZip("data", "./data.zip")
+	sourceFolderPath := "/data"
 
-	if _, err := s3Client.FPutObject(os.Getenv("BUCKET_NAME"), "data.zip", "data.zip", minio.PutObjectOptions{
+	fileName := fmt.Sprintf("%d.zip", time.Now().Unix())
+	RecursiveZip(sourceFolderPath, fileName)
+
+	zipString := fmt.Sprintf("%s: %s zip created.", time.Now().String(), fileName)
+	fmt.Println(zipString)
+
+	if _, err := s3Client.FPutObject(os.Getenv("BUCKET_NAME"), fileName, fileName, minio.PutObjectOptions{
 		ContentType: "application/zip",
 	}); err != nil {
 		log.Fatalln(err)
 	}
-	log.Println("Successfully uploaded")
+	sucessLog := fmt.Sprintf("%s: %s uploaded successfully.", time.Now().String(), fileName)
+	fmt.Println(sucessLog)
 }
 
 func main() {
 	c := cron.New()
-	c.AddFunc(os.Getenv("CRON_SCHEDULE"), Upload)
+	if os.Getenv("ACCESS_KEY_ID") == "" {
+		log.Fatal("ACCESS_KEY_ID can't be blank")
+	}
+	if os.Getenv("BUCKET_NAME") == "" {
+		log.Fatal("BUCKET_NAME can't be blank")
+	}
+	if os.Getenv("CRON_SCHEDULE") == "" {
+		log.Fatal("CRON_SCHEDULE can't be blank")
+	}
+	if os.Getenv("S3_URL") == "" {
+		log.Fatal("S3_URL can't be blank")
+	}
+	if os.Getenv("SECRET_ACCESS_KEY") == "" {
+		log.Fatal("SECRET_ACCESS_KEY can't be blank")
+	}
+	c.AddFunc("* * * * *", Upload)
 	c.Start()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	wg.Wait()
 }
