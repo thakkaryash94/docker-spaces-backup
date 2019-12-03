@@ -56,6 +56,7 @@ func RecursiveZip(pathToZip, destinationPath string) error {
 
 // Upload is function to upload zip to Spaces
 func Upload() {
+
 	s3Client, err := minio.New(os.Getenv("S3_URL"), os.Getenv("ACCESS_KEY_ID"), os.Getenv("SECRET_ACCESS_KEY"), true)
 	if err != nil {
 		log.Fatalln(err)
@@ -66,37 +67,53 @@ func Upload() {
 	fileName := fmt.Sprintf("%d.zip", time.Now().Unix())
 	RecursiveZip(sourceFolderPath, fileName)
 
-	zipString := fmt.Sprintf("%s: %s zip created.", time.Now().String(), fileName)
-	fmt.Println(zipString)
+	log.Printf("%s zip created.\n", fileName)
 
-	if _, err := s3Client.FPutObject(os.Getenv("BUCKET_NAME"), fileName, fileName, minio.PutObjectOptions{
-		ContentType: "application/zip",
-	}); err != nil {
+	// check if file exist before upload and delete after uploading finished.
+	if _, err := os.Stat(fileName); err == nil {
+		if _, err := s3Client.FPutObject(os.Getenv("BUCKET_NAME"), fileName, fileName, minio.PutObjectOptions{
+			ContentType: "application/zip",
+		}); err != nil {
+			log.Println(err)
+		}
+		log.Printf("%s uploaded successfully.\n", fileName)
+
+		err := os.Remove(fileName)
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		log.Printf("%s file deleted after upload.\n", fileName)
+
+	} else if os.IsNotExist(err) {
+		log.Printf("%s file does not exist.\n", fileName)
+	} else {
 		log.Fatalln(err)
 	}
-	sucessLog := fmt.Sprintf("%s: %s uploaded successfully.", time.Now().String(), fileName)
-	fmt.Println(sucessLog)
 }
 
 func main() {
-	c := cron.New()
 	if os.Getenv("ACCESS_KEY_ID") == "" {
-		log.Fatal("ACCESS_KEY_ID can't be blank")
+		log.Fatalln("ACCESS_KEY_ID can't be blank.")
 	}
 	if os.Getenv("BUCKET_NAME") == "" {
-		log.Fatal("BUCKET_NAME can't be blank")
+		log.Fatalln("BUCKET_NAME can't be blank.")
 	}
 	if os.Getenv("CRON_SCHEDULE") == "" {
-		log.Fatal("CRON_SCHEDULE can't be blank")
+		log.Fatalln("CRON_SCHEDULE can't be blank.")
 	}
 	if os.Getenv("S3_URL") == "" {
-		log.Fatal("S3_URL can't be blank")
+		log.Fatalln("S3_URL can't be blank")
 	}
 	if os.Getenv("SECRET_ACCESS_KEY") == "" {
-		log.Fatal("SECRET_ACCESS_KEY can't be blank")
+		log.Fatalln("SECRET_ACCESS_KEY can't be blank.")
 	}
-	c.AddFunc("* * * * *", Upload)
+	c := cron.New()
+	c.AddFunc(os.Getenv("CRON_SCHEDULE"), Upload)
 	c.Start()
+	log.Println("Backup scheduler started successfully.")
 	var wg sync.WaitGroup
 	wg.Add(1)
 	wg.Wait()
