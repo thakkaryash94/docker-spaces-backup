@@ -1,4 +1,5 @@
-# Docker Spaces Backup
+# Docker Spaces Backup ![Build and Push Docker](https://github.com/thakkaryash94/docker-spaces-backup/workflows/Build%20and%20Push%20Docker/badge.svg)
+
 Docker image for Digital Ocean spaces backup
 
 ### Environment Variables
@@ -9,13 +10,11 @@ Docker image for Digital Ocean spaces backup
 - S3_URL: Spaces url(nyc3.digitaloceanspaces.com)
 - SECRET_ACCESS_KEY: Spaces secret access key
 
-
-### Volumes:
+### Volumes
 
 - mount backup folder with `/data` path
 
-
-#### Example:
+#### Example
 
 ```sh
 docker run -v $(pwd)/data:/data:ro \
